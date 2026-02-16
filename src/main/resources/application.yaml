@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: commitmessage
+
+claude:
+  api:
+    key: ${ANTHROPIC_API_KEY:}
+    url: https://api.anthropic.com/v1/messages
+    model: claude-sonnet-4-20250514
+    max-tokens: 1000
+    version: 2023-06-01
+
+logging:
+  level:
+    io.github.lani1234.commitmessage: INFO
