@@ -43,3 +43,4 @@ public class CommitMessageCommand implements CommandLineRunner {
         System.out.println("\n✅ Copy the message above and use it for your commit!");
     }
 }
+// TODO: Testing tool
