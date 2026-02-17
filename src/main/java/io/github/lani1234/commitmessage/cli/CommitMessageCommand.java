@@ -62,8 +62,8 @@ public class CommitMessageCommand implements CommandLineRunner {
                 switch (response) {
                     case "y":
                     case "yes":
-                        System.out.println("\n Great! Copy the message above and commit with:");
-                        System.out.println("   git commit -m \"" + message.getSummary().replace("\"", "\\\"") + "\"");
+                        System.out.println("\n Great! Here's the full git commit command for you to copy/paste:\n");
+                        System.out.println(" git commit -m \"" + cleanMessage(message.getFullMessage()) + "\"");
                         keepTrying = false;
                         break;
                     case "r":
