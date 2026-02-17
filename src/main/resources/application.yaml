@@ -10,6 +10,25 @@ claude:
     max-tokens: 1000
     version: 2023-06-01
 
+commit:
+  prompt:
+    # You can customize this template
+    template: |
+      Analyze this git diff and generate a professional commit message.
+      
+      Format requirements:
+      - First line: brief summary (50 characters or less)
+      - Blank line
+      - Bullet points explaining what changed and why (be specific)
+      - Use conventional commit format if applicable (feat:, fix:, refactor:, etc.)
+      - Do NOT wrap the output in markdown code fences or backticks
+      
+      Git diff:
+      {diff}
+
+    # Future: Add different styles (conventional, emoji, detailed)
+    style: conventional
+
 logging:
   level:
     io.github.lani1234.commitmessage: INFO

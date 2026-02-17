@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.github.lani1234.commitmessage.config.ClaudeConfig;
+import io.github.lani1234.commitmessage.config.PromptConfig;
 import io.github.lani1234.commitmessage.model.CommitMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +21,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ClaudeService {
 
-    private final ClaudeConfig config;
+    private final ClaudeConfig claudeConfig;
+    private final PromptConfig promptConfig;
     private final OkHttpClient httpClient = new OkHttpClient();
     private final Gson gson = new Gson();
 
@@ -31,6 +33,8 @@ public class ClaudeService {
             throw new IllegalArgumentException("Diff cannot be empty");
         }
 
+        validateApiKey();
+
         String prompt = buildPrompt(diff);
         String response = callClaudeApi(prompt);
 
@@ -38,25 +42,23 @@ public class ClaudeService {
         return parseCommitMessage(response);
     }
 
+    private void validateApiKey() {
+        if (claudeConfig.getKey() == null || claudeConfig.getKey().trim().isEmpty()) {
+            throw new IllegalStateException(
+                    "ANTHROPIC_API_KEY is not set. Please set it as an environment variable:\n" +
+                            "export ANTHROPIC_API_KEY=\"your-key-here\""
+            );
+        }
+    }
+
     private String buildPrompt(String diff) {
-        return """
-                Analyze this git diff and generate a professional commit message.
-                
-                Format requirements:
-                - First line: brief summary (50 characters or less)
-                - Blank line
-                - Bullet points explaining what changed and why (be specific)
-                - Use conventional commit format if applicable (feat:, fix:, refactor:, etc.)
-                
-                Git diff:
-                %s
-                """.formatted(diff);
+        return promptConfig.getTemplate().replace("{diff}", diff);
     }
 
     private String callClaudeApi(String prompt) throws IOException {
         Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", config.getModel());
-        requestBody.put("max_tokens", config.getMaxTokens());
+        requestBody.put("model", claudeConfig.getModel());
+        requestBody.put("max_tokens", claudeConfig.getMaxTokens());
         requestBody.put("messages", List.of(
                 Map.of("role", "user", "content", prompt)
         ));
@@ -67,9 +69,9 @@ public class ClaudeService {
         );
 
         Request request = new Request.Builder()
-                .url(config.getUrl())
-                .addHeader("x-api-key", config.getKey())
-                .addHeader("anthropic-version", config.getVersion())
+                .url(claudeConfig.getUrl())
+                .addHeader("x-api-key", claudeConfig.getKey())
+                .addHeader("anthropic-version", claudeConfig.getVersion())
                 .addHeader("content-type", "application/json")
                 .post(body)
                 .build();
@@ -77,7 +79,19 @@ public class ClaudeService {
         try (Response response = httpClient.newCall(request).execute()) {
             if (!response.isSuccessful()) {
                 String errorBody = response.body() != null ? response.body().string() : "No error body";
-                throw new IOException("API call failed: " + response.code() + " - " + errorBody);
+                log.error("API call failed: {} - {}", response.code(), errorBody);
+
+                if (response.code() == 401) {
+                    throw new IOException("API authentication failed. Please check your ANTHROPIC_API_KEY.");
+                } else if (response.code() == 429) {
+                    throw new IOException("Rate limit exceeded. Please try again in a moment.");
+                } else {
+                    throw new IOException("API call failed with status " + response.code() + ": " + errorBody);
+                }
+            }
+
+            if (response.body() == null) {
+                throw new IOException("API returned empty response");
             }
 
             String responseBody = response.body().string();
@@ -86,9 +100,19 @@ public class ClaudeService {
     }
 
     private String extractTextFromResponse(String jsonResponse) {
-        JsonObject obj = gson.fromJson(jsonResponse, JsonObject.class);
-        JsonArray content = obj.getAsJsonArray("content");
-        return content.get(0).getAsJsonObject().get("text").getAsString();
+        try {
+            JsonObject obj = gson.fromJson(jsonResponse, JsonObject.class);
+            JsonArray content = obj.getAsJsonArray("content");
+
+            if (content == null || content.isEmpty()) {
+                throw new IOException("API response missing content");
+            }
+
+            return content.get(0).getAsJsonObject().get("text").getAsString();
+        } catch (Exception e) {
+            log.error("Failed to parse API response: {}", jsonResponse);
+            throw new RuntimeException("Failed to parse API response", e);
+        }
     }
 
     private CommitMessage parseCommitMessage(String message) {

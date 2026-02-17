@@ -15,6 +15,11 @@ public class GitService {
     public String getStagedDiff() throws IOException {
         log.info("Reading staged git diff...");
 
+        // First check if we're in a git repository
+        if (!isGitRepository()) {
+            throw new IOException("Not a git repository. Run 'git init' to initialize one.");
+        }
+
         ProcessBuilder processBuilder = new ProcessBuilder("git", "diff", "--staged");
         processBuilder.redirectErrorStream(true);
 
@@ -41,5 +46,16 @@ public class GitService {
     public boolean hasStagedChanges() throws IOException {
         String diff = getStagedDiff();
         return diff != null && !diff.trim().isEmpty();
+    }
+
+    private boolean isGitRepository() {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("git", "rev-parse", "--git-dir");
+            Process process = pb.start();
+            int exitCode = process.waitFor();
+            return exitCode == 0;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
