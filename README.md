@@ -2,7 +2,7 @@
 
 A Spring Boot CLI tool that uses Claude AI to automatically generate professional, meaningful commit messages from your git diffs.
 
-##  What It Does
+## What It Does
 
 This tool analyzes your staged git changes and uses Anthropic's Claude API to generate well-formatted, professional commit messages that follow conventional commit standards.
 
@@ -22,6 +22,20 @@ feat: add user authentication validation
 - Updated user registration flow
 ```
 
+After generating a message, you can:
+- Accept it and get a ready-to-use commit command
+- Reject it if it doesn't fit
+- Regenerate a new message with different wording
+
+## Features
+
+- Analyzes git diffs to understand your changes
+- Generates professional, conventional commit messages
+- Interactive mode - accept, reject, or regenerate messages
+- Configurable prompt templates via application.yml
+- Comprehensive error handling for API and git issues
+- Follows conventional commit standards (feat:, fix:, refactor:, etc.)
+
 ## Tech Stack
 
 - **Java 21** - Language
@@ -37,15 +51,15 @@ feat: add user authentication validation
 - Java 21 or later
 - Maven 3.6+
 - Git
-- Anthropic API key ([Get one free](https://console.anthropic.com))
+- Anthropic API key
 
 ## Setup
 
 ### 1. Clone the Repository
 ```bash
-http:
+# HTTPS:
 git clone https://github.com/lani1234/commit-message-generator.git
-or ssh:
+# or SSH:
 git clone git@github.com:lani1234/commit-message-generator.git
 
 cd commit-message-generator
@@ -88,7 +102,14 @@ git add MyFile.java
 mvn spring-boot:run
 ```
 
-The tool will output a formatted commit message that you can copy and use.
+The tool will generate a message and prompt you:
+```
+Use this message? (y/n/r for regenerate): 
+```
+
+- **y** - Accept the message and get the full git commit command
+- **n** - Reject and exit
+- **r** - Regenerate a new message
 
 ### Option 2: Using the JAR Directly
 ```bash
@@ -115,14 +136,28 @@ chmod +x generate-commit.sh
 ./generate-commit.sh
 ```
 
-## Cost
+## Configuration
 
-Each commit message generation costs approximately **$0.001 - $0.003** (less than a penny).
+Customize the prompt template in `src/main/resources/application.yml`:
+```yaml
+commit:
+  prompt:
+    template: |
+      Analyze this git diff and generate a professional commit message.
+      
+      Format requirements:
+      - First line: brief summary (50 characters or less)
+      - Blank line
+      - Bullet points explaining what changed and why (be specific)
+      - Use conventional commit format if applicable (feat:, fix:, refactor:, etc.)
+      
+      Git diff:
+      {diff}
+    
+    style: conventional
+```
 
-With the free $5 credits, you can generate 1,500+ commit messages.
-
-
-##  Troubleshooting
+## Troubleshooting
 
 ### "No staged changes found"
 Make sure you've staged files with `git add` before running the tool.
@@ -152,12 +187,9 @@ Make sure annotation processing is enabled in your IDE:
 
 Ideas for extending this project:
 
-- [ ] Interactive mode (accept/reject/regenerate messages)
-- [ ] Auto-commit option (`--commit` flag)
-- [ ] Multiple commit message styles (conventional, emoji, detailed)
+- [ ] Auto-commit option (`--commit` flag to commit automatically)
 - [ ] Git hooks integration (automatic generation on commit)
-- [ ] Configuration file for custom prompt templates
-- [ ] Batch mode for multiple commits
+- [ ] Batch mode for multiple staged changes
 - [ ] Web UI with Spring MVC
 - [ ] REST API for IDE plugins
-
+- [ ] Commit message history and reuse
